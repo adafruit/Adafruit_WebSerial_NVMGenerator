@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateProgress: updateProgress,
     logMsg: logMsg,
     debugMsg: debugMsg,
-    debug: true})
+    debug: false})
   butConnect.addEventListener('click', () => {
     clickConnect().catch(async (e) => {
       errorMsg(e.message);

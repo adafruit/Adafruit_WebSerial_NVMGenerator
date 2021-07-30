@@ -5,20 +5,8 @@
 
 let espTool;
 let isConnected = false;
-let stubLoader = null;
 
 const baudRates = [115200];
-const flashSizes = {
-    "512KB": 0x00,
-    "256KB": 0x10,
-    "1MB": 0x20,
-    "2MB": 0x30,
-    "4MB": 0x40,
-    "2MB-c1": 0x50,
-    "4MB-c1": 0x60,
-    "8MB": 0x80,
-    "16MB": 0x90,
-};
 
 const partitionFilename = "wsPartitions.csv";
 const firmwareLocation = "https://cdn.glitch.com/9dbad7ff-79cd-424b-8202-f93e639c2c70%2FWippersnapper_demo.bin";
@@ -53,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateProgress: updateProgress,
     logMsg: logMsg,
     debugMsg: debugMsg,
-    debug: false})
+    debug: true})
   butConnect.addEventListener('click', () => {
     clickConnect().catch(async (e) => {
       errorMsg(e.message);
@@ -135,7 +123,6 @@ const SIZE = 0x3000
  * Reads data from the input stream and places it in the inputBuffer
  */
 async function readLoop() {
-  logMsg("Readloop started")
   reader = port.readable.getReader();
   while (true) {
     const { value, done } = await reader.read();
@@ -165,8 +152,9 @@ function debugMsg(...args) {
   function getStackTrace() {
     let stack = new Error().stack;
     stack = stack.split("\n").map(v => v.trim());
-    stack.shift();
-    stack.shift();
+    for (let i=0; i<3; i++) {
+        stack.shift();
+    }
 
     let trace = [];
     for (let line of stack) {
@@ -265,12 +253,16 @@ async function clickConnect() {
       toggleUIToolbar(true);
       appDiv.classList.add("connected");
       let baud = parseInt(baudRate.value);
-      if (baudRates.includes(baud) && baud != ESP_ROM_BAUD) {
-        await espTool.setBaudrate(baud);
-      }
       logMsg("Connected to " + await espTool.chipName());
       logMsg("MAC Address: " + formatMacAddr(espTool.macAddr()));
-      stubLoader = await espTool.runStub();
+      espTool = await espTool.runStub();
+      if (baud != ESP_ROM_BAUD) {
+        if (await espTool.chipType() == ESP32) {
+          logMsg("WARNING: ESP32 is having issues working at speeds faster than 115200. Continuing at 115200 for now...")
+        } else {
+          await changeBaudRate(baud);
+        }
+      }
     }
   } catch(e) {
     errorMsg(e);
@@ -323,7 +315,7 @@ async function clickErase() {
     try {
       logMsg("Erasing flash memory. Please wait...");
       let stamp = Date.now();
-      await stubLoader.eraseFlash();
+      await espTool.eraseFlash();
       logMsg("Finished. Took " + (Date.now() - stamp) + "ms to erase.");
     } catch(e) {
       errorMsg(e);
@@ -366,11 +358,11 @@ async function clickProgram() {
 
   // Flash the Firmware first
   //let firmware = await getFirmware();
-  //await stubLoader.flashData(firmware, 0, 0);
+  //await espTool.flashData(firmware, 0, 0);
 
   // Flash the NVS Partition
   let nvsData = await generate(params);
-  await stubLoader.flashData(new Uint8Array(nvsData).buffer, OFFSET, 0);
+  await espTool.flashData(new Uint8Array(nvsData).buffer, OFFSET, 0);
 
   // Download the NVS Partition
   /*
@@ -483,7 +475,7 @@ function toggleUIConnected(connected) {
 function loadAllSettings() {
   // Load all saved settings or defaults
   autoscroll.checked = loadSetting('autoscroll', true);
-  baudRate.value = loadSetting('baudrate', 115200);
+  baudRate.value = loadSetting('baudrate', baudRates[0]);
   darkMode.checked = loadSetting('darkmode', false);
 }
 

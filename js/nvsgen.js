@@ -597,7 +597,7 @@ class InsufficientSizeError extends Error {
 }
 
 async function getTemplateFile(templateFile) {
-  let response = await fetch("/" + templateFile);
+  let response = await fetch(templateFile);
   let templateCsv = await response.text();
   return templateCsv;
 }

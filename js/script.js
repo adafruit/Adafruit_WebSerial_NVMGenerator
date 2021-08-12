@@ -37,6 +37,13 @@ let currentBoard;
 let buttonState = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
+  let debug = false;
+  var getParams = {}
+  location.search.substr(1).split("&").forEach(function(item) {getParams[item.split("=")[0]] = item.split("=")[1]})
+  if (getParams["debug"] !== undefined) {
+    debug = getParams["debug"] == "1" || getParams["debug"].toLowerCase() != "true";
+  }
+
   espTool = new EspLoader({
     updateProgress: updateProgress,
     logMsg: logMsg,

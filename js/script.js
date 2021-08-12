@@ -20,7 +20,21 @@ const flashSizes = {
 };
 
 const partitionFilename = "wsPartitions.csv";
-const firmwareLocation = "https://cdn.glitch.com/9dbad7ff-79cd-424b-8202-f93e639c2c70%2FWippersnapper_demo.bin";
+const binFolder = "https://cdn.glitch.com/9dbad7ff-79cd-424b-8202-f93e639c2c70%2F";
+
+const structure = {
+  0xe000: "boot_app0.bin",
+  0x1000: "Wippersnapper_demo.ino.bin",
+  0x10000: "Wippersnapper_demo.ino.bin",
+  0x8000: "Wippersnapper_demo.ino.partitions.bin",
+}
+
+const stage_erase_all = 0x01;
+const stage_flash_structure = 0x02;
+const stage_flash_nvm = 0x03;
+
+const full_program = [stage_erase_all, stage_flash_structure, stage_flash_nvm];
+const nvm_only_program = [stage_flash_nvm];
 
 const bufferSize = 512;
 const colors = ['#00a7e9', '#f89521', '#be1e2d'];
@@ -33,13 +47,17 @@ const baudRate = document.getElementById('baudRate');
 const butClear = document.getElementById('butClear');
 //const butErase = document.getElementById('butErase');
 const butProgram = document.getElementById('butProgram');
+const butProgramNvm = document.getElementById('butProgramNvm');
 const autoscroll = document.getElementById('autoscroll');
 const lightSS = document.getElementById('light');
 const darkSS = document.getElementById('dark');
 const darkMode = document.getElementById('darkmode');
 const partitionData = document.querySelectorAll(".field input.partition-data");
 const progress = document.getElementById('progressBar');
+const stepname = document.getElementById('stepname');
 const appDiv = document.getElementById('app');
+const disableWhileBusy = [partitionData, butProgram, butProgramNvm, baudRate];
+
 
 let colorIndex = 0;
 let activePanels = [];
@@ -70,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
   butClear.addEventListener('click', clickClear);
   //butErase.addEventListener('click', clickErase);
   butProgram.addEventListener('click', clickProgram);
+  butProgramNvm.addEventListener('click', clickProgramNvm);
   for (let i = 0; i < partitionData.length; i++) {
     partitionData[i].addEventListener('change', checkProgrammable);
     partitionData[i].addEventListener('keydown', checkProgrammable);
@@ -352,12 +371,19 @@ async function clickErase() {
  * Click handler for the program button.
  */
 async function clickProgram() {
-  // We need to provide data,
-  // a template, and get the binary data from
-  // it. For this we will make an partition generator
-  // file
-  let data = {};
+   await programScript(full_program);
+}
 
+/**
+ * @name clickProgramNvm
+ * Click handler for the program button.
+ */
+async function clickProgramNvm() {
+   await programScript(nvm_only_program);
+}
+
+async function programScript(stages) {
+  let data = {};
   for (let field of getValidFields()) {
       data[partitionData[field].id] = partitionData[field].value;
   }
@@ -368,40 +394,77 @@ async function clickProgram() {
     'size': SIZE,
   }
 
-
-  baudRate.disabled = true;
-  //butErase.disabled = true;
-  butProgram.disabled = true;
-  for (let i=0; i< 4; i++) {
-    partitionData[i].disabled = true;
+  let steps = [];
+  for (let i=0; i<stages.length; i++) {
+    if (stages[i] == stage_erase_all) {
+      steps.push({
+        name: "Erasing Flash",
+        func: async function() {
+          await espTool.eraseFlash();
+        },
+        params: {},
+      })
+    } else if (stages[i] == stage_flash_structure) {
+      for (const [offset, filename] of Object.entries(structure)) {
+        steps.push({
+          name: "Flashing " + filename,
+          func: async function(params) {
+            let firmware = await getFirmware(params["filename"]);
+            await espTool.flashData(firmware, params["offset"], 0);
+          },
+          params: {
+            filename: filename,
+            offset: offset,
+          }
+        })
+      }
+    } else if (stages[i] == stage_flash_nvm) {
+      steps.push({
+        name: "Generating the NVS Partition",
+        func: async function(params) {
+          let nvsData = await generate(params["params"]);
+          await espTool.flashData(new Uint8Array(nvsData).buffer, OFFSET, 0);
+        },
+        params: {
+          params: params,
+        }
+      })
+    }
   }
 
-  // Flash the Firmware first
-  //let firmware = await getFirmware();
-  //await espTool.flashData(firmware, 0, 0);
-
-  // Flash the NVS Partition
-  let nvsData = await generate(params);
-  await espTool.flashData(new Uint8Array(nvsData).buffer, OFFSET, 0);
-
-  // Download the NVS Partition
-  /*
-  var blob = new Blob([new Uint8Array(nvsData)], {type: "application/octet-stream"});
-  var link = document.createElement('a');
-  link.href = window.URL.createObjectURL(blob);
-  link.download = "wsPartitionBlobJs.bin";
-  link.click();
-  link.remove();
-  */
-
-
-  for (let i=0; i< 4; i++) {
-    partitionData[i].disabled = false;
-    progress.classList.add("hidden");
-    progress.querySelector("div").style.width = "0";
+  for (let i=0; i<disableWhileBusy.length; i++) {
+    if (Array.isArray(disableWhileBusy[i])) {
+      for (let j=0; j<disableWhileBusy[i].length; i++) {
+        disableWhileBusy[i][j].disable = true;
+      }
+    } else {
+      disableWhileBusy[i].disable = true;
+    }
   }
-  //butErase.disabled = false;
-  baudRate.disabled = false;
+
+  progress.classList.remove("hidden");
+  stepname.classList.remove("hidden");
+
+  for (let i=0; i<steps.length; i++) {
+    stepname.innerText = steps[i].name + " ("+ (i + 1) +"/" + steps.length + ")...";
+    await steps[i].func(steps[i].params);
+  }
+
+  stepname.classList.add("hidden");
+  stepname.innerText = "";
+  progress.classList.add("hidden");
+  progress.querySelector("div").style.width = "0";
+
+  for (let i=0; i<disableWhileBusy.length; i++) {
+    if (Array.isArray(disableWhileBusy[i])) {
+      for (let j=0; j<disableWhileBusy[i].length; i++) {
+        disableWhileBusy[i][j].disable = false;
+      }
+    } else {
+      disableWhileBusy[i].disable = false;
+    }
+  }
+
   checkProgrammable();
   logMsg("To run the new firmware, please reset your device.")
 }
@@ -425,6 +488,7 @@ function getValidFields() {
  * Check if the conditions to program the device are sufficient
  */
 async function checkProgrammable() {
+  butProgramNvm.disabled = getValidFields().length < 4;
   butProgram.disabled = getValidFields().length < 4;
 }
 
@@ -516,7 +580,7 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function getFirmware() {
-  let response = await fetch(firmwareLocation);
+async function getFirmware(filename) {
+  let response = await fetch(binFolder + filename);
   return await response.arrayBuffer();
 }

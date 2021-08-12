@@ -61,6 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
   butProgram.addEventListener('click', clickProgram);
   for (let i = 0; i < partitionData.length; i++) {
     partitionData[i].addEventListener('change', checkProgrammable);
+    partitionData[i].addEventListener('keydown', checkProgrammable);
+    partitionData[i].addEventListener('input', checkProgrammable);
   }
   autoscroll.addEventListener('click', clickAutoscroll);
   baudRate.addEventListener('change', changeBaudRate);

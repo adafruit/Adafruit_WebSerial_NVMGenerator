@@ -7,6 +7,17 @@ let espTool;
 let isConnected = false;
 
 const baudRates = [115200];
+const flashSizes = {
+    "512KB": 0x00,
+    "256KB": 0x10,
+    "1MB": 0x20,
+    "2MB": 0x30,
+    "4MB": 0x40,
+    "2MB-c1": 0x50,
+    "4MB-c1": 0x60,
+    "8MB": 0x80,
+    "16MB": 0x90,
+};
 
 const partitionFilename = "wsPartitions.csv";
 const firmwareLocation = "https://cdn.glitch.com/9dbad7ff-79cd-424b-8202-f93e639c2c70%2FWippersnapper_demo.bin";
@@ -20,7 +31,7 @@ const log = document.getElementById('log');
 const butConnect = document.getElementById('butConnect');
 const baudRate = document.getElementById('baudRate');
 const butClear = document.getElementById('butClear');
-const butErase = document.getElementById('butErase');
+//const butErase = document.getElementById('butErase');
 const butProgram = document.getElementById('butProgram');
 const autoscroll = document.getElementById('autoscroll');
 const lightSS = document.getElementById('light');
@@ -57,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   butClear.addEventListener('click', clickClear);
-  butErase.addEventListener('click', clickErase);
+  //butErase.addEventListener('click', clickErase);
   butProgram.addEventListener('click', clickProgram);
   for (let i = 0; i < partitionData.length; i++) {
     partitionData[i].addEventListener('change', checkProgrammable);
@@ -319,7 +330,7 @@ async function clickDarkMode() {
 async function clickErase() {
   if (window.confirm("This will erase the entire flash. Click OK to continue.")) {
     baudRate.disabled = true;
-    butErase.disabled = true;
+    //butErase.disabled = true;
     butProgram.disabled = true;
     try {
       logMsg("Erasing flash memory. Please wait...");
@@ -329,7 +340,7 @@ async function clickErase() {
     } catch(e) {
       errorMsg(e);
     } finally {
-      butErase.disabled = false;
+      //butErase.disabled = false;
       baudRate.disabled = false;
       await checkProgrammable();
     }
@@ -359,7 +370,7 @@ async function clickProgram() {
 
 
   baudRate.disabled = true;
-  butErase.disabled = true;
+  //butErase.disabled = true;
   butProgram.disabled = true;
   for (let i=0; i< 4; i++) {
     partitionData[i].disabled = true;
@@ -389,7 +400,7 @@ async function clickProgram() {
     progress.classList.add("hidden");
     progress.querySelector("div").style.width = "0";
   }
-  butErase.disabled = false;
+  //butErase.disabled = false;
   baudRate.disabled = false;
   checkProgrammable();
   logMsg("To run the new firmware, please reset your device.")
@@ -468,7 +479,7 @@ function toggleUIToolbar(show) {
   } else {
     appDiv.classList.remove("connected");
   }
-  butErase.disabled = !show;
+  //butErase.disabled = !show;
 }
 
 function toggleUIConnected(connected) {

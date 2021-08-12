@@ -20,7 +20,7 @@ const flashSizes = {
 };
 
 const partitionFilename = "wsPartitions.csv";
-const binFolder = "https://cdn.glitch.com/9dbad7ff-79cd-424b-8202-f93e639c2c70%2F";
+const binFolder = "bin/";
 
 const structure = {
   0xe000: "boot_app0.bin",

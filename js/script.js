@@ -149,6 +149,7 @@ function updateProgress(part, percentage) {
 async function disconnect() {
   toggleUIToolbar(false);
   await espTool.disconnect()
+  toggleUIConnected(false);
 }
 
 const OFFSET = 0x9000

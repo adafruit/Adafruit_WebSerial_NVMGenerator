@@ -20,11 +20,11 @@ const flashSizes = {
 };
 
 const partitionFilename = "wsPartitions.csv";
-const binFolder = "bin/";
+const binFolder = "https://cdn.glitch.com/9dbad7ff-79cd-424b-8202-f93e639c2c70%2F";
 
 const structure = {
   0xe000: "boot_app0.bin",
-  0x1000: "Wippersnapper_demo.ino.bootloader.bin",
+  0x1000: "Wippersnapper_demo.ino.bin",
   0x10000: "Wippersnapper_demo.ino.bin",
   0x8000: "Wippersnapper_demo.ino.partitions.bin",
 }
@@ -45,7 +45,6 @@ const log = document.getElementById('log');
 const butConnect = document.getElementById('butConnect');
 const baudRate = document.getElementById('baudRate');
 const butClear = document.getElementById('butClear');
-//const butErase = document.getElementById('butErase');
 const butProgram = document.getElementById('butProgram');
 const butProgramNvm = document.getElementById('butProgramNvm');
 const autoscroll = document.getElementById('autoscroll');
@@ -82,11 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
     clickConnect().catch(async (e) => {
       errorMsg(e.message);
       disconnect();
-      toggleUIConnected(false);
     });
   });
   butClear.addEventListener('click', clickClear);
-  //butErase.addEventListener('click', clickErase);
   butProgram.addEventListener('click', clickProgram);
   butProgramNvm.addEventListener('click', clickProgramNvm);
   for (let i = 0; i < partitionData.length; i++) {
@@ -280,7 +277,6 @@ async function reset() {
 async function clickConnect() {
   if (espTool.connected()) {
     await disconnect();
-    toggleUIConnected(false);
     return;
   }
 
@@ -306,7 +302,6 @@ async function clickConnect() {
   } catch(e) {
     errorMsg(e);
     await disconnect();
-    toggleUIConnected(false);
     return;
   }
 }
@@ -340,30 +335,6 @@ async function clickAutoscroll() {
 async function clickDarkMode() {
   updateTheme();
   saveSetting('darkmode', darkMode.checked);
-}
-
-/**
- * @name clickErase
- * Click handler for the erase button.
- */
-async function clickErase() {
-  if (window.confirm("This will erase the entire flash. Click OK to continue.")) {
-    baudRate.disabled = true;
-    //butErase.disabled = true;
-    butProgram.disabled = true;
-    try {
-      logMsg("Erasing flash memory. Please wait...");
-      let stamp = Date.now();
-      await espTool.eraseFlash();
-      logMsg("Finished. Took " + (Date.now() - stamp) + "ms to erase.");
-    } catch(e) {
-      errorMsg(e);
-    } finally {
-      //butErase.disabled = false;
-      baudRate.disabled = false;
-      await checkProgrammable();
-    }
-  }
 }
 
 /**
@@ -466,6 +437,7 @@ async function programScript(stages) {
   }
 
   checkProgrammable();
+  disconnect();
   logMsg("To run the new firmware, please reset your device.")
 }
 
@@ -543,7 +515,6 @@ function toggleUIToolbar(show) {
   } else {
     appDiv.classList.remove("connected");
   }
-  //butErase.disabled = !show;
 }
 
 function toggleUIConnected(connected) {

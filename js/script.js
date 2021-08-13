@@ -24,7 +24,7 @@ const binFolder = "bin/";
 
 const structure = {
   0xe000: "boot_app0.bin",
-  0x1000: "Wippersnapper_demo.ino.bin",
+  0x1000: "Wippersnapper_demo.ino.bootloader.bin",
   0x10000: "Wippersnapper_demo.ino.bin",
   0x8000: "Wippersnapper_demo.ino.partitions.bin",
 }

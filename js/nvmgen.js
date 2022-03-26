@@ -24,6 +24,14 @@ const FULL = 0xFFFFFFFC;
 const VERSION2 = 0xFE;
 
 
+String.prototype.replaceAt = function(index, character) {
+    return this.substr(0, index) + character + this.substr(index + character.length);
+};
+
+Array.prototype.replaceAt = function(index, newArray) {
+    return this.slice(0, index).concat(newArray).concat(this.slice(index + newArray.length));
+};
+
 async function generate(params) {
     /*
     Generate NVS Partition
